@@ -3,7 +3,7 @@ import { staffCanSeeStudent } from "./access";
 import { currentUser } from "./auth";
 import { readStore } from "./store";
 import { studentName } from "./format";
-import type { FamilyHubRow, FamilyInviteStatus, NoticeHubRow, Student, User, Workspace } from "./types";
+import type { FamilyHubRow, FamilyInviteStatus, FileHubRow, NoticeHubRow, Student, User, Workspace } from "./types";
 
 export async function staffContext(): Promise<{
   user: NonNullable<Awaited<ReturnType<typeof currentUser>>>;
@@ -83,7 +83,6 @@ export async function workspaceFamily(): Promise<User[]> {
   );
 }
 
-
 export async function familyHubRows(): Promise<FamilyHubRow[]> {
   const ctx = await staffContext();
   if (!ctx) return [];
@@ -146,4 +145,24 @@ export async function noticeHubRows(): Promise<NoticeHubRow[]> {
     }
   }
   return rows.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+}
+
+export async function fileHubRows(): Promise<FileHubRow[]> {
+  const students = await workspaceStudents();
+  const rows: FileHubRow[] = [];
+  for (const s of students) {
+    for (const d of s.documents ?? []) {
+      rows.push({
+        id: d.id,
+        studentId: s.id,
+        student: studentName(s),
+        grade: s.grade,
+        filename: d.filename,
+        kind: d.kind,
+        publishedToFamily: d.publishedToFamily,
+        createdAt: d.createdAt,
+      });
+    }
+  }
+  return rows.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 }

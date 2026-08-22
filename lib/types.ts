@@ -278,3 +278,14 @@ export type NoticeHubRow = {
   sentAt: string | null;
   ackedAt: string | null;
 };
+
+export type FileHubRow = {
+  id: string;
+  studentId: string;
+  student: string;
+  grade: string;
+  filename: string;
+  kind: string;
+  publishedToFamily: boolean;
+  createdAt: string;
+};
