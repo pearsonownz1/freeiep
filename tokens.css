@@ -1,0 +1,71 @@
+/* FreeIEP design tokens — single source of visual truth */
+:root {
+  --paper: #f7f4ee;
+  --paper-raised: #fffcf7;
+  --ink: #1c1917;
+  --ink-soft: #57534e;
+  --line: #e8e4dc;
+  --meadow: #2f6b4f;
+  --meadow-deep: #1f4a37;
+  --meadow-soft: #e3ede7;
+  --clay: #c45c26;
+  --clay-soft: #f8ebe3;
+  --sun: #c98806;
+  --sun-soft: #f8efc9;
+  --berry: #a33b2b;
+  --berry-soft: #f6e4e1;
+  --focus: #2f6b4f;
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Source Serif 4", "Iowan Old Style", Georgia, serif;
+
+  --text-display: 2.5rem;
+  --text-page: 1.75rem;
+  --text-section: 1rem;
+  --text-body: 0.9375rem;
+  --text-ui: 0.8125rem;
+  --text-meta: 0.75rem;
+
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --radius-pill: 999px;
+  --radius-mark: 8px;
+
+  --shadow-card: 0 1px 2px rgb(28 25 23 / 0.06);
+  --focus-ring: 0 0 0 2px var(--paper), 0 0 0 4px var(--focus);
+
+  --space-page: 24px;
+  --nav-width: 220px;
+  --row-height: 56px;
+  --control-height: 40px;
+  --app-max: 1080px;
+  --prose-max: 38rem;
+
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --duration: 160ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --duration: 1ms; }
+}
+
+html, body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.5;
+}
+
+h1, h2, .page-title {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.tabular { font-variant-numeric: tabular-nums; }
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
