@@ -13,6 +13,7 @@ import {
   deleteGoal,
   deleteStudent,
   inviteFamily,
+  inviteMember,
   logProgress,
   proposeMeeting,
   publishProgressReport,
@@ -21,15 +22,17 @@ import {
   saveGoal,
   savePresentLevels,
   sendNotice,
+  deleteFile,
+  revokeFamilyAccess,
   setFilePublished,
   setReportPublished,
   toggleTask,
   updateClocks,
   uploadFile,
 } from "@/lib/actions";
-import { formatDay, formatWhen, plainLanguagePoint, studentName } from "@/lib/format";
+import { activityCopy, formatDay, formatWhen, plainLanguagePoint, studentName } from "@/lib/format";
 import { isoDate } from "@/lib/ids";
-import { CLOCK_LABELS, METRIC_LABELS, type Student } from "@/lib/types";
+import { CLOCK_LABELS, METRIC_LABELS, type Student, type User } from "@/lib/types";
 import { METRICS } from "@/lib/format";
 
 const TABS = ["plan", "progress", "meetings", "files", "family"] as const;
@@ -38,10 +41,16 @@ export function StudentView({
   student,
   tab,
   assistOn,
+  canEdit,
+  familyUsers,
+  familyPending,
 }: {
   student: Student;
   tab: string;
   assistOn: boolean;
+  canEdit: boolean;
+  familyUsers: User[];
+  familyPending: { email: string; tokenId: string }[];
 }) {
   const router = useRouter();
   const current = TABS.includes(tab as (typeof TABS)[number]) ? tab : "plan";
@@ -60,9 +69,15 @@ export function StudentView({
           <button className="btn btn-primary" type="button" onClick={() => setLogOpen(true)}>
             Add data
           </button>
-          <Link href={`/app/students/${student.id}?tab=meetings`} className="btn btn-secondary">
-            Schedule meeting
-          </Link>
+          {canEdit ? (
+            <Link href={`/app/students/${student.id}?tab=meetings`} className="btn btn-secondary">
+              Schedule meeting
+            </Link>
+          ) : (
+            <Link href={`/app/students/${student.id}?tab=meetings`} className="btn btn-secondary">
+              View meetings
+            </Link>
+          )}
         </div>
       </div>
 
@@ -81,17 +96,24 @@ export function StudentView({
               current === t ? "border-b-2 border-meadow text-ink" : "text-ink-soft"
             }`}
           >
-            {t}
+            {t === "family" ? "Family / team" : t}
           </Link>
         ))}
       </div>
 
       <div className="mt-6">
-        {current === "plan" && <PlanTab student={student} assistOn={assistOn} />}
-        {current === "progress" && <ProgressTab student={student} onLog={() => setLogOpen(true)} />}
-        {current === "meetings" && <MeetingsTab student={student} />}
-        {current === "files" && <FilesTab student={student} />}
-        {current === "family" && <FamilyTab student={student} />}
+        {current === "plan" && <PlanTab student={student} assistOn={assistOn} canEdit={canEdit} />}
+        {current === "progress" && <ProgressTab student={student} onLog={() => setLogOpen(true)} canEdit={canEdit} />}
+        {current === "meetings" && <MeetingsTab student={student} canEdit={canEdit} />}
+        {current === "files" && <FilesTab student={student} canEdit={canEdit} />}
+        {current === "family" && (
+          <FamilyTab
+            student={student}
+            canInvite={canEdit}
+            familyUsers={familyUsers}
+            familyPending={familyPending}
+          />
+        )}
       </div>
 
       <section className="mt-10">
@@ -103,14 +125,21 @@ export function StudentView({
                 <input
                   type="checkbox"
                   checked={t.done}
-                  onChange={() => toggleTask(student.id, t.id).then(() => router.refresh())}
+                  disabled={!canEdit}
+                  onChange={() => {
+                    if (!canEdit) return;
+                    toggleTask(student.id, t.id).then(() => router.refresh());
+                  }}
                 />
                 <span className={t.done ? "text-ink-soft line-through" : ""}>{t.title}</span>
               </label>
             </li>
           ))}
+          {!student.tasks.length ? <li className="text-[13px] text-ink-soft">No tasks.</li> : null}
         </ul>
-        <AddTask studentId={student.id} />
+        {canEdit ? <AddTask studentId={student.id} /> : (
+          <p className="mt-2 text-[13px] text-ink-soft">Tasks are set by the case manager.</p>
+        )}
       </section>
 
       <section className="mt-10">
@@ -118,7 +147,7 @@ export function StudentView({
         <ul className="mt-3 space-y-1 text-[13px] text-ink-soft">
           {student.activity.slice(0, 8).map((a) => (
             <li key={a.id}>
-              {a.who} {a.verb} {a.object} · {formatWhen(a.at)}
+              {activityCopy(a)} · {formatWhen(a.at)}
             </li>
           ))}
           {!student.activity.length ? <li>Nothing logged yet.</li> : null}
@@ -155,37 +184,45 @@ function AddTask({ studentId }: { studentId: string }) {
   );
 }
 
-function PlanTab({ student, assistOn }: { student: Student; assistOn: boolean }) {
+function PlanTab({ student, assistOn, canEdit }: { student: Student; assistOn: boolean; canEdit: boolean }) {
   return (
     <div className="space-y-8">
       <div>
         <h2 className="font-sans text-[16px] font-semibold">Present levels</h2>
-        <AutosaveArea studentId={student.id} field="strengths" label="Strengths" defaultValue={student.iepPlan.presentLevels.strengths} />
-        <AutosaveArea studentId={student.id} field="needs" label="Needs" defaultValue={student.iepPlan.presentLevels.needs} />
-        <AutosaveArea studentId={student.id} field="baselines" label="Baselines" defaultValue={student.iepPlan.presentLevels.baselines} />
+        {!canEdit ? <p className="mt-1 text-[13px] text-ink-soft">Read-only for team members.</p> : null}
+        <AutosaveArea studentId={student.id} field="strengths" label="Strengths" defaultValue={student.iepPlan.presentLevels.strengths} readOnly={!canEdit} />
+        <AutosaveArea studentId={student.id} field="needs" label="Needs" defaultValue={student.iepPlan.presentLevels.needs} readOnly={!canEdit} />
+        <AutosaveArea studentId={student.id} field="baselines" label="Baselines" defaultValue={student.iepPlan.presentLevels.baselines} readOnly={!canEdit} />
         {assistOn ? (
           <p className="mt-2 rounded-[8px] border-l-[3px] border-meadow-soft bg-paper-raised px-3 py-2 text-[13px] text-ink-soft">
             Assist suggestion — you decide. (Key saved. This demo will not invent minutes or placement.)
           </p>
         ) : null}
       </div>
-      <GoalsBlock student={student} />
+      <GoalsBlock student={student} canEdit={canEdit} />
       <div>
         <h2 className="font-sans text-[16px] font-semibold">Accommodations</h2>
         <ul className="mt-3 space-y-2">
           {student.iepPlan.accommodations.map((a) => (
             <li key={a.id} className="flex items-center justify-between gap-2">
               <span>{a.text}</span>
+              {canEdit ? (
               <button className="text-[13px] text-berry" type="button" onClick={() => removeAccommodation(student.id, a.id)}>
                 Remove
               </button>
+              ) : null}
             </li>
           ))}
+          {!student.iepPlan.accommodations.length ? (
+            <li className="text-[13px] text-ink-soft">None listed.</li>
+          ) : null}
         </ul>
+        {canEdit ? (
         <SimpleAdd
           placeholder="Add an accommodation"
           onAdd={(t) => addAccommodation(student.id, t)}
         />
+        ) : null}
       </div>
       <div>
         <h2 className="font-sans text-[16px] font-semibold">Services</h2>
@@ -196,28 +233,32 @@ function PlanTab({ student, assistOn }: { student: Student; assistOn: boolean })
               <span>
                 {s.name} — {s.minutes} min, {s.frequency}
               </span>
+              {canEdit ? (
               <button className="text-[13px] text-berry" type="button" onClick={() => removeService(student.id, s.id)}>
                 Remove
               </button>
+              ) : null}
             </li>
           ))}
         </ul>
-        <ServiceForm studentId={student.id} />
+        {canEdit ? <ServiceForm studentId={student.id} /> : null}
       </div>
-      <ClocksForm student={student} />
+      <ClocksForm student={student} canEdit={canEdit} />
       <div className="flex flex-wrap gap-2">
         <a className="btn btn-primary" href={`/api/pdf/plan/${student.id}`}>
           Export Plan PDF
         </a>
-        <button
-          className="btn btn-danger"
-          type="button"
-          onClick={() => {
-            if (confirm("Delete this student and their files?")) deleteStudent(student.id);
-          }}
-        >
-          Delete student
-        </button>
+        {canEdit ? (
+          <button
+            className="btn btn-danger"
+            type="button"
+            onClick={() => {
+              if (confirm("Delete this student and their files?")) deleteStudent(student.id);
+            }}
+          >
+            Delete student
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -228,11 +269,13 @@ function AutosaveArea({
   field,
   label,
   defaultValue,
+  readOnly,
 }: {
   studentId: string;
   field: "strengths" | "needs" | "baselines";
   label: string;
   defaultValue: string;
+  readOnly?: boolean;
 }) {
   const [value, setValue] = useState(defaultValue);
   const [, start] = useTransition();
@@ -242,7 +285,9 @@ function AutosaveArea({
       <textarea
         id={field}
         value={value}
+        readOnly={readOnly}
         onChange={(e) => {
+          if (readOnly) return;
           const v = e.target.value;
           setValue(v);
           start(() => {
@@ -254,16 +299,18 @@ function AutosaveArea({
   );
 }
 
-function GoalsBlock({ student }: { student: Student }) {
+function GoalsBlock({ student, canEdit }: { student: Student; canEdit: boolean }) {
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState("");
   return (
     <div>
       <div className="flex items-center justify-between">
         <h2 className="font-sans text-[16px] font-semibold">Goals</h2>
+        {canEdit ? (
         <button className="btn btn-secondary" type="button" onClick={() => setOpen(true)}>
           Add goal
         </button>
+        ) : null}
       </div>
       {student.iepPlan.goals.length === 0 ? (
         <p className="mt-3 font-serif text-[20px]">No goals yet. A goal needs a number you can see change.</p>
@@ -277,9 +324,11 @@ function GoalsBlock({ student }: { student: Student }) {
                 {g.metric === "percent_accuracy" ? "% accuracy" : ` ${g.unit || METRIC_LABELS[g.metric]}`}
                 {g.title ? ` on ${g.title}` : ""}.
               </p>
+              {canEdit ? (
               <button className="mt-2 text-[13px] text-berry" type="button" onClick={() => deleteGoal(student.id, g.id)}>
                 Remove
               </button>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -400,34 +449,38 @@ function ServiceForm({ studentId }: { studentId: string }) {
   );
 }
 
-function ClocksForm({ student }: { student: Student }) {
+function ClocksForm({ student, canEdit }: { student: Student; canEdit: boolean }) {
   const val = (kind: string) => student.clocks.find((c) => c.kind === kind)?.dueOn ?? "";
   return (
-    <form action={updateClocks} className="card space-y-3 p-4">
+    <form action={canEdit ? updateClocks : undefined} className="card space-y-3 p-4">
       <input type="hidden" name="studentId" value={student.id} />
       <h2 className="font-sans text-[16px] font-semibold">Clocks</h2>
       <div className="grid gap-3 md:grid-cols-2">
         <Field label={CLOCK_LABELS.annual_review}>
-          <input type="date" name="annual" defaultValue={val("annual_review")} />
+          <input type="date" name="annual" defaultValue={val("annual_review")} disabled={!canEdit} />
         </Field>
         <Field label={CLOCK_LABELS.reevaluation}>
-          <input type="date" name="reeval" defaultValue={val("reevaluation")} />
+          <input type="date" name="reeval" defaultValue={val("reevaluation")} disabled={!canEdit} />
         </Field>
         <Field label={CLOCK_LABELS.progress_report}>
-          <input type="date" name="progress" defaultValue={val("progress_report")} />
+          <input type="date" name="progress" defaultValue={val("progress_report")} disabled={!canEdit} />
         </Field>
         <Field label={CLOCK_LABELS.meeting_notice}>
-          <input type="date" name="notice" defaultValue={val("meeting_notice")} />
+          <input type="date" name="notice" defaultValue={val("meeting_notice")} disabled={!canEdit} />
         </Field>
       </div>
+      {canEdit ? (
       <button className="btn btn-secondary" type="submit">
         Save dates
       </button>
+      ) : (
+        <p className="text-[13px] text-ink-soft">Dates are set by the case manager.</p>
+      )}
     </form>
   );
 }
 
-function ProgressTab({ student, onLog }: { student: Student; onLog: () => void }) {
+function ProgressTab({ student, onLog, canEdit }: { student: Student; onLog: () => void; canEdit: boolean }) {
   return (
     <div className="space-y-8">
       {student.iepPlan.goals.length === 0 ? (
@@ -469,34 +522,40 @@ function ProgressTab({ student, onLog }: { student: Student; onLog: () => void }
           );
         })
       )}
-      <PublishReport student={student} />
+      <PublishReport student={student} canEdit={canEdit} />
     </div>
   );
 }
 
-function PublishReport({ student }: { student: Student }) {
+function PublishReport({ student, canEdit }: { student: Student; canEdit: boolean }) {
   return (
-    <form action={publishProgressReport} className="card space-y-3 p-4">
-      <h2 className="font-sans text-[16px] font-semibold">Publish progress report</h2>
-      <p className="text-[13px] text-ink-soft">Write 2–4 sentences per goal. You write it. Default: family cannot see it.</p>
-      <input type="hidden" name="studentId" value={student.id} />
-      <div className="grid gap-3 md:grid-cols-2">
-        <Field label="From">
-          <input type="date" name="from" defaultValue={isoDate()} />
-        </Field>
-        <Field label="To">
-          <input type="date" name="to" defaultValue={isoDate()} />
-        </Field>
-      </div>
-      {student.iepPlan.goals.map((g) => (
-        <Field key={g.id} label={g.title}>
-          <textarea name={`summary_${g.id}`} />
-        </Field>
-      ))}
-      <FamilySwitch />
-      <button className="btn btn-primary" type="submit">
-        Save report
-      </button>
+    <div className="card space-y-3 p-4">
+      {canEdit ? (
+        <form action={publishProgressReport} className="space-y-3">
+          <h2 className="font-sans text-[16px] font-semibold">Publish progress report</h2>
+          <p className="text-[13px] text-ink-soft">Write 2–4 sentences per goal. You write it. Default: family cannot see it.</p>
+          <input type="hidden" name="studentId" value={student.id} />
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label="From">
+              <input type="date" name="from" defaultValue={isoDate()} />
+            </Field>
+            <Field label="To">
+              <input type="date" name="to" defaultValue={isoDate()} />
+            </Field>
+          </div>
+          {student.iepPlan.goals.map((g) => (
+            <Field key={g.id} label={g.title}>
+              <textarea name={`summary_${g.id}`} />
+            </Field>
+          ))}
+          <FamilySwitch />
+          <button className="btn btn-primary" type="submit">
+            Save report
+          </button>
+        </form>
+      ) : (
+        <h2 className="font-sans text-[16px] font-semibold">Progress reports</h2>
+      )}
       <ul className="space-y-2 text-[13px]">
         {student.progressReports.map((r) => (
           <li key={r.id} className="flex flex-wrap items-center gap-2">
@@ -504,25 +563,29 @@ function PublishReport({ student }: { student: Student }) {
               Progress PDF {formatDay(r.createdAt)}
             </a>
             {r.publishedToFamily ? <FamilyPill /> : null}
-            <button
-              className="text-clay"
-              type="button"
-              onClick={() => setReportPublished(student.id, r.id, !r.publishedToFamily)}
-            >
-              {r.publishedToFamily ? "Hide from family" : "Family can see this"}
-            </button>
+            {canEdit ? (
+              <button
+                className="text-clay"
+                type="button"
+                onClick={() => setReportPublished(student.id, r.id, !r.publishedToFamily)}
+              >
+                {r.publishedToFamily ? "Hide from family" : "Family can see this"}
+              </button>
+            ) : null}
           </li>
         ))}
+        {!student.progressReports.length ? <li className="text-ink-soft">No reports yet.</li> : null}
       </ul>
-    </form>
+    </div>
   );
 }
 
-function MeetingsTab({ student }: { student: Student }) {
+function MeetingsTab({ student, canEdit }: { student: Student; canEdit: boolean }) {
   const [links, setLinks] = useState<{ email: string; accept: string; suggest: string; decline: string }[] | null>(null);
   const [err, setErr] = useState("");
   return (
     <div className="space-y-6">
+      {canEdit ? (
       <form
         className="card space-y-3 p-4"
         onSubmit={async (e) => {
@@ -566,6 +629,9 @@ function MeetingsTab({ student }: { student: Student }) {
           Send times
         </button>
       </form>
+      ) : (
+        <p className="text-[13px] text-ink-soft">The case manager proposes and confirms meeting times.</p>
+      )}
       {links ? (
         <div className="card space-y-3 p-4">
           <h3 className="font-medium">Demo links (also logged)</h3>
@@ -618,7 +684,16 @@ function MeetingsTab({ student }: { student: Student }) {
           ) : null}
         </div>
       ))}
-      <NoticeForm student={student} />
+      {canEdit ? <NoticeForm student={student} /> : student.notices.length ? (
+        <ul className="card space-y-2 p-4 text-[13px] text-ink-soft">
+          {student.notices.map((n) => (
+            <li key={n.id}>
+              Sent {n.sentAt ? formatWhen(n.sentAt) : "—"}
+              {n.ackedAt ? ` · acknowledged ${formatWhen(n.ackedAt)}` : " · waiting"}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }
@@ -664,19 +739,24 @@ function NoticeForm({ student }: { student: Student }) {
   );
 }
 
-function FilesTab({ student }: { student: Student }) {
+function FilesTab({ student, canEdit }: { student: Student; canEdit: boolean }) {
+  const router = useRouter();
   return (
     <div className="space-y-4">
-      <form action={uploadFile} className="card space-y-3 p-4">
-        <input type="hidden" name="studentId" value={student.id} />
-        <Field label="File" hint="pdf, png, jpg, webp. 10 MB.">
-          <input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,.webp" required />
-        </Field>
-        <FamilySwitch />
-        <button className="btn btn-primary" type="submit">
-          Upload
-        </button>
-      </form>
+      {canEdit ? (
+        <form action={uploadFile} className="card space-y-3 p-4">
+          <input type="hidden" name="studentId" value={student.id} />
+          <Field label="File" hint="pdf, png, jpg, webp. 10 MB.">
+            <input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,.webp" required />
+          </Field>
+          <FamilySwitch />
+          <button className="btn btn-primary" type="submit">
+            Upload
+          </button>
+        </form>
+      ) : (
+        <p className="text-[13px] text-ink-soft">Files are added by the case manager. You can open them.</p>
+      )}
       <ul className="space-y-2">
         {student.documents.map((d) => (
           <li key={d.id} className="card flex flex-wrap items-center justify-between gap-2 p-3">
@@ -685,27 +765,102 @@ function FilesTab({ student }: { student: Student }) {
             </a>
             <div className="flex items-center gap-2">
               {d.publishedToFamily ? <FamilyPill /> : null}
-              <button
-                className="text-[13px] text-clay"
-                type="button"
-                onClick={() => setFilePublished(student.id, d.id, !d.publishedToFamily)}
-              >
-                {d.publishedToFamily ? "Hide" : "Family can see this"}
-              </button>
+              {canEdit ? (
+                <>
+                  <button
+                    className="text-[13px] text-clay"
+                    type="button"
+                    onClick={() => setFilePublished(student.id, d.id, !d.publishedToFamily)}
+                  >
+                    {d.publishedToFamily ? "Hide" : "Family can see this"}
+                  </button>
+                  <button
+                    className="text-[13px] text-berry"
+                    type="button"
+                    onClick={() => {
+                      if (!confirm("Delete this file?")) return;
+                      deleteFile(student.id, d.id).then(() => router.refresh());
+                    }}
+                  >
+                    Delete
+                  </button>
+                </>
+              ) : null}
             </div>
           </li>
         ))}
+        {!student.documents.length ? <li className="text-[13px] text-ink-soft">No files yet.</li> : null}
       </ul>
     </div>
   );
 }
 
-function FamilyTab({ student }: { student: Student }) {
+function FamilyTab({
+  student,
+  canInvite,
+  familyUsers,
+  familyPending,
+}: {
+  student: Student;
+  canInvite: boolean;
+  familyUsers: User[];
+  familyPending: { email: string; tokenId: string }[];
+}) {
   const [url, setUrl] = useState<string | null>(null);
+  const [teamUrl, setTeamUrl] = useState<string | null>(null);
   const [err, setErr] = useState("");
+  const [teamErr, setTeamErr] = useState("");
+  const router = useRouter();
   return (
     <div className="space-y-4">
       <p className="text-ink-soft">Invite one family member. They see this student only, and only what you publish.</p>
+      {(familyUsers.length || familyPending.length) ? (
+        <ul className="card divide-y divide-line overflow-hidden">
+          {familyUsers.map((f) => (
+            <li key={f.id} className="flex items-center justify-between gap-2 px-4 py-3 text-[14px]">
+              <span>
+                {f.email} · access
+              </span>
+              {canInvite ? (
+                <button
+                  className="text-[13px] text-berry"
+                  type="button"
+                  onClick={async () => {
+                    if (!confirm(`Remove family access for ${f.email}?`)) return;
+                    await revokeFamilyAccess(student.id, f.email);
+                    router.refresh();
+                  }}
+                >
+                  Remove access
+                </button>
+              ) : null}
+            </li>
+          ))}
+          {familyPending.map((inv) => (
+            <li key={inv.tokenId} className="flex items-center justify-between gap-2 px-4 py-3 text-[14px]">
+              <span>
+                {inv.email} · invite pending
+              </span>
+              {canInvite ? (
+                <button
+                  className="text-[13px] text-berry"
+                  type="button"
+                  onClick={async () => {
+                    if (!confirm(`Revoke the invite for ${inv.email}?`)) return;
+                    await revokeFamilyAccess(student.id, inv.email);
+                    router.refresh();
+                  }}
+                >
+                  Revoke invite
+                </button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-[13px] text-ink-soft">No family access yet.</p>
+      )}
+      {canInvite ? (
       <form
         className="card space-y-3 p-4"
         onSubmit={async (e) => {
@@ -724,15 +879,55 @@ function FamilyTab({ student }: { student: Student }) {
           <input name="email" type="email" required />
         </Field>
         {err ? <p className="text-berry text-[13px]">{err}</p> : null}
+        <p className="text-[13px] text-ink-soft">The invite URL appears on this page. Email send comes later.</p>
         <button className="btn btn-primary" type="submit">
           Send invite
         </button>
       </form>
+      ) : null}
       {url ? (
         <p className="card p-4">
           Demo invite:{" "}
           <a className="link break-all" href={url}>
             {url}
+          </a>
+        </p>
+      ) : null}
+
+      <h2 className="pt-4 font-sans text-[16px] font-semibold">Team</h2>
+      <p className="text-ink-soft">Invite a co-teacher or provider. They can add data points and view accommodations. They cannot delete this case.</p>
+      {canInvite ? (
+        <form
+          className="card space-y-3 p-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setTeamErr("");
+            try {
+              const res = await inviteMember(new FormData(e.currentTarget));
+              setTeamUrl(res.url);
+            } catch (ex) {
+              setTeamErr(ex instanceof Error ? ex.message : "Could not invite.");
+            }
+          }}
+        >
+          <input type="hidden" name="studentId" value={student.id} />
+          <Field label="Team email">
+            <input name="email" type="email" required placeholder="speech@school.edu" />
+          </Field>
+          {teamErr ? <p className="text-berry text-[13px]">{teamErr}</p> : null}
+          <p className="text-[13px] text-ink-soft">The invite URL appears on this page. Email send comes later.</p>
+          <button className="btn btn-primary" type="submit">
+            Invite to this student
+          </button>
+        </form>
+      ) : (
+        <p className="text-[13px] text-ink-soft">Ask the case manager to add you to more students.</p>
+      )}
+      {teamUrl ? (
+        <p className="card p-4">
+          Demo team invite:{" "}
+          <a className="link break-all" href={teamUrl}>
+            {teamUrl}
           </a>
         </p>
       ) : null}
