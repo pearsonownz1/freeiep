@@ -35,6 +35,7 @@ export function StaffChrome({
     { href: "/app/meetings", label: "Meetings", match: "prefix" },
     { href: "/app/calendar", label: "Calendar", match: "prefix" },
     { href: "/app/family", label: "Family", match: "prefix" },
+    { href: "/app/files", label: "Files", match: "prefix" },
     { href: "/app/notices", label: "Notices", match: "prefix" },
     { href: "/app/team", label: "Team", match: "prefix" },
   ];
