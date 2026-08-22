@@ -94,7 +94,7 @@ export type Service = {
   frequency: string;
 };
 
-export type IplotPlan = {
+export type IepPlan = {
   presentLevels: PresentLevels;
   goals: Goal[];
   accommodations: Accommodation[];
