@@ -38,6 +38,7 @@ export function StaffChrome({
     { href: "/app/files", label: "Files", match: "prefix" },
     { href: "/app/notices", label: "Notices", match: "prefix" },
     { href: "/app/team", label: "Team", match: "prefix" },
+    { href: "/app/export", label: "Export", match: "prefix" },
   ];
 
   function isActive(item: Item) {
@@ -85,7 +86,13 @@ export function StaffChrome({
           <div className="font-medium text-ink">{workspaceName}</div>
           <div className="truncate">{email}</div>
           <div>{roleLabel}</div>
-          <Link href="/app/settings" className="mt-2 inline-block font-medium text-ink hover:underline">
+          <Link href="/app/export" className="mt-2 inline-block font-medium text-ink hover:underline">
+            Export
+          </Link>
+          <Link href="/app/privacy" className="mt-2 ml-3 inline-block font-medium text-ink hover:underline">
+            Privacy
+          </Link>
+          <Link href="/app/settings" className="mt-2 ml-3 inline-block font-medium text-ink hover:underline">
             Settings
           </Link>
         </div>
@@ -102,6 +109,12 @@ export function StaffChrome({
           <div className="ml-auto flex items-center gap-4 text-[13px] font-medium">
             <Link href="/app/support" className="text-ink-soft hover:text-ink">
               Support
+            </Link>
+            <Link href="/app/export" className="text-ink-soft hover:text-ink">
+              Export
+            </Link>
+            <Link href="/app/privacy" className="text-ink-soft hover:text-ink">
+              Privacy
             </Link>
             <Link href="/app/settings" className="text-ink-soft hover:text-ink">
               Settings
