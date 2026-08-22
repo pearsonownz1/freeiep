@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { clearAssistKey, saveAssistKey } from "@/lib/actions";
+import { clearAssistKey, saveAssistKey } from "@/lib/assist-actions";
 import { Field } from "@/components/ui";
 
 export function AssistPanel({ hasKey }: { hasKey: boolean }) {
