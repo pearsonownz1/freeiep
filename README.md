@@ -25,7 +25,7 @@ If `RESEND_API_KEY` exists later, you can send those URLs by email. Mail is opti
 |---|---|---|
 | `APP_ORIGIN` | no | Absolute origin for magic links |
 | `RESEND_API_KEY` | no | Unused in this demo; reserved for later mail |
-| `TOKEN_SECRET` | no | Reserved; tokens are stored server-side with expiry |
+| `TOKEN_SECRET` | no | Wraps per-user Assist keys at rest; tokens themselves are stored server-side with expiry |
 
 ## What this is not
 
@@ -33,7 +33,7 @@ If `RESEND_API_KEY` exists later, you can send those URLs by email. Mail is opti
 - Not 504, Medicaid, state reporting, or eligibility
 - Not an attorney and not legal advice
 - Students never get accounts
-- Default path uses **no LLM**. Assist is Settings, bring-your-own-key only, and is hidden without a key. FreeIEP will not invent minutes or placement.
+- Default path uses **no LLM**. Assist is Settings → **Add your own API key** (OpenAI or Anthropic). Key is stored per-user and encrypted. No shared vendor key. Without a key, Assist is hidden. Allowed: rewrite present levels, cleaner SMART goal sentence, plain-language progress note. Every suggestion is Accept / Edit / Toss. Assist will not invent minutes, placement, eligibility, or data points, and will not read photos or official PDFs.
 
 ## Reviewer path
 

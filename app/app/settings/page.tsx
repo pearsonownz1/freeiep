@@ -3,11 +3,13 @@ import Link from "next/link";
 import { currentUser } from "@/lib/auth";
 import { readStore } from "@/lib/store";
 import { workspaceFamily, workspaceMembers, workspaceStudents } from "@/lib/queries";
-import { createWorkspace, saveAssistKey } from "@/lib/actions";
+import { createWorkspace } from "@/lib/actions";
+import { hasAssistKey } from "@/lib/assist";
 import { US_STATES } from "@/lib/types";
 import { Field } from "@/components/ui";
 import { ExportButton } from "./export-button";
 import { MembersPanel } from "./members";
+import { AssistPanel } from "./assist-panel";
 
 export default async function SettingsPage({
   searchParams,
@@ -66,18 +68,7 @@ export default async function SettingsPage({
         </button>
       </form>
 
-      <h2 className="mt-12 font-sans text-[16px] font-semibold">Assist (optional)</h2>
-      <p className="mt-1 text-[15px] text-ink-soft">
-        Hidden everywhere unless you add your own API key. FreeIEP will not invent minutes or placement. Default path uses no model.
-      </p>
-      <form action={saveAssistKey} className="mt-4 space-y-3">
-        <Field label="Bring-your-own API key">
-          <input name="assistKey" type="password" placeholder={user.assistKey ? "Key on file. Paste another to replace." : "Leave empty to keep Assist hidden"} autoComplete="off" />
-        </Field>
-        <button className="btn btn-secondary" type="submit">
-          Save key
-        </button>
-      </form>
+      <AssistPanel hasKey={hasAssistKey(user.assistKey)} />
 
       {user.workspaceId ? (
         <MembersPanel
