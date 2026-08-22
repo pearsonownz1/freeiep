@@ -1,8 +1,10 @@
-import Link from "next/link";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
+import { workspaceStudents } from "@/lib/queries";
 import { readStore } from "@/lib/store";
-import { Wordmark } from "@/components/ui";
+import { studentName } from "@/lib/format";
+import { StaffChrome } from "@/components/app/staff-chrome";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await currentUser("staff");
@@ -10,43 +12,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const workspace = user.workspaceId
     ? (await readStore()).workspaces.find((w) => w.id === user.workspaceId)
     : null;
+  const students = await workspaceStudents();
 
   return (
-    <div className="flex min-h-screen bg-paper">
-      <aside className="hidden w-[220px] shrink-0 border-r border-line bg-paper md:flex md:flex-col">
-        <div className="px-5 py-5">
-          <Wordmark href="/app" size="sm" />
-        </div>
-        <nav className="flex flex-col gap-1 px-3 text-[14px]">
-          <Nav href="/app">Caseload</Nav>
-          <Nav href="/app/calendar">Calendar</Nav>
-          <Nav href="/app/settings">Settings</Nav>
-        </nav>
-        <div className="mt-auto px-5 py-5 text-[12px] text-ink-soft">
-          <div>{workspace?.name ?? "Demo"}</div>
-          <div>{user.email}</div>
-          <div>{user.role === "member" ? "Team member" : "Case manager"}</div>
-        </div>
-      </aside>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-line px-4 py-3 md:hidden">
-          <Wordmark href="/app" size="sm" />
-          <nav className="flex gap-3 text-[13px] font-medium text-ink-soft">
-            <Link href="/app">Caseload</Link>
-            <Link href="/app/calendar">Calendar</Link>
-            <Link href="/app/settings">Settings</Link>
-          </nav>
-        </header>
-        <main className="mx-auto w-full max-w-[1080px] flex-1 px-6 py-6">{children}</main>
-      </div>
-    </div>
-  );
-}
-
-function Nav({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link href={href} className="rounded-[12px] px-3 py-2 font-medium text-ink-soft hover:bg-white hover:text-ink">
-      {children}
-    </Link>
+    <Suspense fallback={<div className="min-h-screen bg-paper" />}>
+      <StaffChrome
+        workspaceName={workspace?.name ?? "Demo"}
+        email={user.email}
+        roleLabel={user.role === "member" ? "Team member" : "Case manager"}
+        students={students.map((s) => ({ id: s.id, name: studentName(s), grade: s.grade }))}
+      >
+        {children}
+      </StaffChrome>
+    </Suspense>
   );
 }
