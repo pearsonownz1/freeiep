@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
-import { getStudentForStaff } from "@/lib/queries";
+import { familyAccessForStudent, getStudentForStaff } from "@/lib/queries";
 import { StudentView } from "./student-view";
 
 export default async function StudentPage({
@@ -16,12 +16,15 @@ export default async function StudentPage({
   const student = await getStudentForStaff(id);
   if (!student) notFound();
   const tab = (await searchParams).tab || "plan";
+  const familyAccess = await familyAccessForStudent(id);
   return (
     <StudentView
       student={student}
       tab={tab}
       assistOn={Boolean(user.assistKey && user.assistKey !== "••••••••")}
       canEdit={user.role === "owner"}
+      familyUsers={familyAccess.users}
+      familyPending={familyAccess.pending}
     />
   );
 }

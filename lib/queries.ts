@@ -33,7 +33,37 @@ export async function getStudentForStaff(id: string): Promise<Student | null> {
 export async function getStudentForFamily(): Promise<Student | null> {
   const user = await currentUser("family");
   if (!user || !user.studentId) return null;
-  return (await readStore()).students.find((s) => s.id === user.studentId) ?? null;
+  const student = (await readStore()).students.find((s) => s.id === user.studentId);
+  if (!student) return null;
+  if ((student.revokedFamilyEmails ?? []).includes(user.email)) return null;
+  if (user.workspaceId && student.workspaceId !== user.workspaceId) return null;
+  return student;
+}
+
+export async function familyAccessForStudent(studentId: string): Promise<{
+  users: User[];
+  pending: { email: string; tokenId: string }[];
+}> {
+  const ctx = await staffContext();
+  if (!ctx) return { users: [], pending: [] };
+  const store = await readStore();
+  const student = store.students.find((s) => s.id === studentId);
+  if (!student || !staffCanSeeStudent(ctx.user, student)) return { users: [], pending: [] };
+  const users = store.users.filter(
+    (u) => u.role === "family" && u.studentId === studentId && u.workspaceId === student.workspaceId,
+  );
+  const now = Date.now();
+  const pending = store.tokens
+    .filter(
+      (tok) =>
+        tok.kind === "family_invite" &&
+        tok.studentId === studentId &&
+        !tok.usedAt &&
+        tok.email &&
+        new Date(tok.expiresAt).getTime() > now,
+    )
+    .map((tok) => ({ email: tok.email!, tokenId: tok.id }));
+  return { users, pending };
 }
 
 export async function workspaceMembers(): Promise<User[]> {
@@ -48,6 +78,6 @@ export async function workspaceFamily(): Promise<User[]> {
   const ctx = await staffContext();
   if (!ctx) return [];
   return (await readStore()).users.filter(
-    (u) => u.workspaceId === ctx.workspace.id && u.role === "family",
+    (u) => u.workspaceId === ctx.workspace.id && u.role === "family" && !!u.studentId,
   );
 }
