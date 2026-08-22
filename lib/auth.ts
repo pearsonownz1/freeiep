@@ -2,7 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { nid } from "./ids";
 import { mutateStore, readStore } from "./store";
-import { ensureAutoDemoMaya, isAutoDemoWorkspace, sampleStudents } from "./sample";
+import { ensureAutoDemoMaya, isAutoDemoWorkspace, mayaNeedsDemoFamilyInvite, sampleStudents, seedDemoFamilyInvite } from "./sample";
 import type { Session, Token, TokenKind, User } from "./types";
 
 const STAFF_COOKIE = "freeiep_session";
@@ -135,26 +135,42 @@ async function ensureDemoStaff(): Promise<User> {
       } else if (!s.students.some((st) => st.workspaceId === user.workspaceId)) {
         s.students.push(...sampleStudents(user.workspaceId, user.email));
       }
+      seedDemoFamilyInvite(s, user.workspaceId);
     }
     return { ...user };
   });
   return user;
 }
 
-
 async function maybeFixAutoDemoMaya(user: User) {
   if (user.email !== DEMO_EMAIL || user.role !== "owner" || !user.workspaceId) return;
   const store = await readStore();
   const ws = store.workspaces.find((w) => w.id === user.workspaceId);
+  if (user.workspaceId) {
+    const inviteNeeded = mayaNeedsDemoFamilyInvite(store, user.workspaceId);
+    if (inviteNeeded && !isAutoDemoWorkspace(ws, user.email)) {
+      await mutateStore((s) => {
+        seedDemoFamilyInvite(s, user.workspaceId!);
+      });
+      return;
+    }
+  }
   if (!isAutoDemoWorkspace(ws, user.email)) return;
   const maya = store.students.find(
     (st) => st.workspaceId === user.workspaceId && st.firstName === "Maya" && st.lastName === "Rivera",
   );
+  const g1 = maya?.iepPlan.goals[0];
+  const g2 = maya?.iepPlan.goals[1];
   const needs =
     !maya ||
     !maya.iepPlan.goals.length ||
     !maya.activity.some((a) => a.object.includes("Goal 1")) ||
-    !maya.activity.some((a) => a.object.includes("Goal 2"));
+    !maya.activity.some((a) => a.object.includes("Goal 2")) ||
+    !g1 ||
+    !maya.dataPoints.some((p) => p.goalId === g1.id && p.value === 72) ||
+    Boolean(g2 && !maya.dataPoints.some((p) => p.goalId === g2.id && p.value === 80)) ||
+    !maya.notices?.length ||
+    mayaNeedsDemoFamilyInvite(store, user.workspaceId);
   if (!needs) return;
   await mutateStore((s) => {
     ensureAutoDemoMaya(s, user.workspaceId!);
