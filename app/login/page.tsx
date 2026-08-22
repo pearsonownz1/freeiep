@@ -1,18 +1,5 @@
-import { redeemLogin } from "@/lib/actions";
-import { LoginForm } from "./login-form";
+import { redirect } from "next/navigation";
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ token?: string }>;
-}) {
-  const { token } = await searchParams;
-  if (token) {
-    try {
-      await redeemLogin(token);
-    } catch (e) {
-      return <LoginForm error={e instanceof Error ? e.message : "That link did not work."} />;
-    }
-  }
-  return <LoginForm />;
+export default function LoginPage() {
+  redirect("/app");
 }
