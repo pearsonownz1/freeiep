@@ -11,10 +11,17 @@ export default async function StudentPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const user = await currentUser("staff");
-  if (!user) redirect("/login");
+  if (!user) redirect("/app");
   const { id } = await params;
   const student = await getStudentForStaff(id);
   if (!student) notFound();
   const tab = (await searchParams).tab || "plan";
-  return <StudentView student={student} tab={tab} assistOn={Boolean(user.assistKey && user.assistKey !== "••••••••")} />;
+  return (
+    <StudentView
+      student={student}
+      tab={tab}
+      assistOn={Boolean(user.assistKey && user.assistKey !== "••••••••")}
+      canEdit={user.role === "owner"}
+    />
+  );
 }

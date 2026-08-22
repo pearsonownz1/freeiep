@@ -9,7 +9,7 @@ import { ClockPill } from "@/components/clock-pill";
 
 export default async function CalendarPage() {
   const user = await currentUser("staff");
-  if (!user) redirect("/login");
+  if (!user) redirect("/app");
   if (!user.workspaceId) redirect("/app/settings?setup=1");
   const students = await workspaceStudents();
   const rows = students
@@ -23,7 +23,7 @@ export default async function CalendarPage() {
       {rows.length === 0 ? (
         <p className="mt-10 text-ink-soft">No dates yet. Add a student and set annual / reeval.</p>
       ) : (
-        <ul className="mt-6 divide-y divide-line rounded-[12px] border border-line bg-paper-raised">
+        <ul className="mt-6 divide-y divide-line rounded-[4px] border border-line bg-paper-raised">
           {rows.map(({ s, c }) => (
             <li key={c.id} className="flex min-h-[56px] flex-wrap items-center justify-between gap-2 px-4 py-2">
               <div>

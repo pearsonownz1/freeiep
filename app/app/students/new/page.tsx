@@ -6,7 +6,8 @@ import { Field } from "@/components/ui";
 
 export default async function NewStudentPage() {
   const user = await currentUser("staff");
-  if (!user) redirect("/login");
+  if (!user) redirect("/app");
+  if (user.role !== "owner") redirect("/app");
   if (!user.acceptedLegalAt || !user.workspaceId) redirect("/app/settings?setup=1");
 
   return (
