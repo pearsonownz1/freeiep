@@ -249,3 +249,32 @@ export const US_STATES = [
   "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
   "VA","WA","WV","WI","WY","DC",
 ];
+
+export type FamilyInviteStatus = "none" | "pending" | "active" | "revoked";
+
+export type FamilyHubRow = {
+  id: string;
+  name: string;
+  grade: string;
+  inviteStatus: FamilyInviteStatus;
+  lastPublishedProgress: string | null;
+  unsignedNotices: number;
+  unconfirmedMeetings: number;
+  inviteTokenId: string | null;
+  inviteEmail: string | null;
+  canRevoke: boolean;
+};
+
+export type NoticeHubRow = {
+  id: string;
+  studentId: string;
+  student: string;
+  grade: string;
+  date: string;
+  action: "propose" | "refuse";
+  description: string;
+  sent: boolean;
+  acked: boolean;
+  sentAt: string | null;
+  ackedAt: string | null;
+};

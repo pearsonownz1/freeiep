@@ -2,7 +2,8 @@ import "server-only";
 import { staffCanSeeStudent } from "./access";
 import { currentUser } from "./auth";
 import { readStore } from "./store";
-import type { Student, User, Workspace } from "./types";
+import { studentName } from "./format";
+import type { FamilyHubRow, FamilyInviteStatus, NoticeHubRow, Student, User, Workspace } from "./types";
 
 export async function staffContext(): Promise<{
   user: NonNullable<Awaited<ReturnType<typeof currentUser>>>;
@@ -80,4 +81,69 @@ export async function workspaceFamily(): Promise<User[]> {
   return (await readStore()).users.filter(
     (u) => u.workspaceId === ctx.workspace.id && u.role === "family" && !!u.studentId,
   );
+}
+
+
+export async function familyHubRows(): Promise<FamilyHubRow[]> {
+  const ctx = await staffContext();
+  if (!ctx) return [];
+  const store = await readStore();
+  const students = store.students.filter((s) => staffCanSeeStudent(ctx.user, s));
+  const now = Date.now();
+  const owner = ctx.user.role === "owner";
+  return students.map((s) => {
+    const users = store.users.filter(
+      (u) => u.role === "family" && u.studentId === s.id && u.workspaceId === s.workspaceId,
+    );
+    const pending = store.tokens.filter(
+      (tok) =>
+        tok.kind === "family_invite" &&
+        tok.studentId === s.id &&
+        !tok.usedAt &&
+        tok.email &&
+        new Date(tok.expiresAt).getTime() > now,
+    );
+    let inviteStatus: FamilyInviteStatus = "none";
+    if (users.length) inviteStatus = "active";
+    else if (pending.length) inviteStatus = "pending";
+    else if ((s.revokedFamilyEmails ?? []).length) inviteStatus = "revoked";
+    const lastPub = [...s.progressReports]
+      .filter((r) => r.publishedToFamily)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    return {
+      id: s.id,
+      name: studentName(s),
+      grade: s.grade,
+      inviteStatus,
+      lastPublishedProgress: lastPub?.createdAt ?? null,
+      unsignedNotices: s.notices.filter((n) => n.sentAt && !n.ackedAt).length,
+      unconfirmedMeetings: s.meetings.filter((m) => m.status === "finding_time" || m.status === "drafted").length,
+      inviteTokenId: pending[0]?.id ?? null,
+      inviteEmail: pending[0]?.email ?? users[0]?.email ?? s.revokedFamilyEmails?.[0] ?? null,
+      canRevoke: owner && (users.length > 0 || pending.length > 0),
+    };
+  });
+}
+
+export async function noticeHubRows(): Promise<NoticeHubRow[]> {
+  const students = await workspaceStudents();
+  const rows: NoticeHubRow[] = [];
+  for (const s of students) {
+    for (const n of s.notices) {
+      rows.push({
+        id: n.id,
+        studentId: s.id,
+        student: studentName(s),
+        grade: s.grade,
+        date: n.date,
+        action: n.proposeOrRefuse,
+        description: n.description,
+        sent: Boolean(n.sentAt),
+        acked: Boolean(n.ackedAt),
+        sentAt: n.sentAt ?? null,
+        ackedAt: n.ackedAt ?? null,
+      });
+    }
+  }
+  return rows.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 }
