@@ -1,7 +1,9 @@
 import "server-only";
 import { addDays, isoDate, nid } from "./ids";
 import { mutateStore } from "./store";
-import type { Student } from "./types";
+import type { Activity, Goal, StoreData, Student } from "./types";
+
+const DEMO_EMAIL = "demo@freeiep.app";
 
 function emptyPlan() {
   return {
@@ -12,9 +14,94 @@ function emptyPlan() {
   };
 }
 
-export function seedSampleCaseload(workspaceId: string, actorEmail: string): Student[] {
+export function isAutoDemoWorkspace(
+  workspace: { name: string; state: string } | undefined,
+  ownerEmail: string | undefined,
+): boolean {
+  return ownerEmail === DEMO_EMAIL && workspace?.name === "Demo" && workspace?.state === "OR";
+}
+
+function mayaGoals(today: string): Goal[] {
+  return [
+    {
+      id: nid("gol"),
+      title: "Oral reading",
+      metric: "wcpm",
+      baseline: "58",
+      target: "90",
+      unit: "wcpm",
+      timelineDate: addDays(today, 120),
+      objectives: [],
+    },
+    {
+      id: nid("gol"),
+      title: "Multisyllable accuracy",
+      metric: "percent_accuracy",
+      baseline: "60",
+      target: "85",
+      unit: "%",
+      timelineDate: addDays(today, 120),
+      objectives: [],
+    },
+  ];
+}
+
+function mayaActivityLines(): Omit<Activity, "id" | "at">[] {
+  return [
+    { who: "Demo teacher", verb: "logged", object: "72 wcpm on Goal 1" },
+    { who: "Demo teacher", verb: "logged", object: "80% on Goal 2" },
+  ];
+}
+
+function hasGoalActivity(student: Student, n: number): boolean {
+  const needle = `Goal ${n}`;
+  return student.activity.some((a) => a.object.includes(needle));
+}
+
+/** Upsert Maya on the shared auto-demo workspace. Never deletes extra students. Returns true if the store changed. */
+export function ensureAutoDemoMaya(s: StoreData, workspaceId: string): boolean {
   const today = isoDate();
-  const students: Student[] = [
+  let maya = s.students.find(
+    (st) => st.workspaceId === workspaceId && st.firstName === "Maya" && st.lastName === "Rivera",
+  );
+  let changed = false;
+  if (!maya) {
+    maya = sampleStudents(workspaceId, DEMO_EMAIL)[0];
+    s.students.push(maya);
+    return true;
+  }
+  if (!maya.iepPlan.goals.length) {
+    maya.iepPlan.goals = mayaGoals(today);
+    const pl = maya.iepPlan.presentLevels;
+    if (!pl.strengths && !pl.needs && !pl.baselines) {
+      maya.iepPlan.presentLevels = {
+        strengths: "Reads dialogue with expression. Asks for help when stuck.",
+        needs: "Oral reading accuracy drops on multisyllabic words.",
+        baselines: "58 words correct per minute on a grade 4 passage.",
+      };
+    }
+    changed = true;
+  }
+  const now = Date.now();
+  mayaActivityLines().forEach((line, i) => {
+    const n = i + 1;
+    if (hasGoalActivity(maya!, n)) return;
+    maya!.activity.unshift({
+      id: nid("act"),
+      who: line.who,
+      verb: line.verb,
+      object: line.object,
+      at: new Date(now - (mayaActivityLines().length - 1 - i) * 3600_000).toISOString(),
+    });
+    changed = true;
+  });
+  return changed;
+}
+
+export function sampleStudents(workspaceId: string, actorEmail: string): Student[] {
+  const today = isoDate();
+  const goals = mayaGoals(today);
+  return [
     {
       id: nid("stu"),
       workspaceId,
@@ -30,6 +117,7 @@ export function seedSampleCaseload(workspaceId: string, actorEmail: string): Stu
           needs: "Oral reading accuracy drops on multisyllabic words.",
           baselines: "58 words correct per minute on a grade 4 passage.",
         },
+        goals,
       },
       dataPoints: [],
       clocks: [
@@ -46,10 +134,24 @@ export function seedSampleCaseload(workspaceId: string, actorEmail: string): Stu
       activity: [
         {
           id: nid("act"),
-          who: actorEmail,
-          verb: "added",
-          object: "sample student Maya Rivera",
+          who: "Demo teacher",
+          verb: "logged",
+          object: "80% on Goal 2",
           at: new Date().toISOString(),
+        },
+        {
+          id: nid("act"),
+          who: "Demo teacher",
+          verb: "logged",
+          object: "72 wcpm on Goal 1",
+          at: new Date(Date.now() - 1800_000).toISOString(),
+        },
+        {
+          id: nid("act"),
+          who: "Family",
+          verb: "acked",
+          object: "notice",
+          at: new Date(Date.now() - 3600_000).toISOString(),
         },
       ],
       progressReports: [],
@@ -118,8 +220,11 @@ export function seedSampleCaseload(workspaceId: string, actorEmail: string): Stu
       createdAt: new Date().toISOString(),
     },
   ];
+}
 
-  mutateStore((s) => {
+export async function seedSampleCaseload(workspaceId: string, actorEmail: string): Promise<Student[]> {
+  const students = sampleStudents(workspaceId, actorEmail);
+  await mutateStore((s) => {
     s.students.push(...students);
   });
   return students;
