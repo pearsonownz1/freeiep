@@ -18,6 +18,19 @@ export default async function TokenPage({ params }: { params: Promise<{ token: s
   const student = token.studentId ? (await readStore()).students.find((s) => s.id === token.studentId) : null;
   const meeting = student?.meetings.find((m) => m.id === token.meetingId);
 
+  if (token.kind === "member_invite") {
+    return (
+      <Shell>
+        <h1 className="page-title text-[28px]">Team invite</h1>
+        <p className="mt-3 text-ink-soft">
+          Join as a co-teacher or provider. You can add data and view accommodations
+          {student ? ` for ${studentName(student)}` : " on assigned students"}. You cannot delete the case.
+        </p>
+        <TokenActions tokenId={id} kind={token.kind} />
+      </Shell>
+    );
+  }
+
   if (token.kind === "family_invite") {
     return (
       <Shell>

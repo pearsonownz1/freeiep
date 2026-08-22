@@ -37,6 +37,23 @@ export function TokenActions({
     }
   }
 
+  if (kind === "member_invite") {
+    return (
+      <form
+        className="mt-6"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          await go();
+        }}
+      >
+        <button className="btn btn-primary min-h-11" disabled={busy} type="submit">
+          Join as team member
+        </button>
+        {msg ? <p className="mt-3 text-[15px]">{msg}</p> : null}
+      </form>
+    );
+  }
+
   if (kind === "family_invite") {
     return (
       <form
