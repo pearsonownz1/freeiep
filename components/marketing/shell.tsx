@@ -15,7 +15,9 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
 export function StartFree({ note }: { note?: string }) {
   return (
     <div>
-      <Link href="/app" className="btn btn-primary">Start free</Link>
+      <Link href="/app" className="btn btn-primary">
+        Start free
+      </Link>
       {note ? <p className="mt-3 text-[13px] text-ink-soft">{note}</p> : null}
     </div>
   );
@@ -25,12 +27,26 @@ export function CtaBand({ children = "Start free. The official IEP still lives w
   return (
     <div className="mt-16 rounded-[16px] border border-line bg-paper-raised px-6 py-8 shadow-card">
       <p className="font-serif text-[22px] font-medium leading-[1.3]">{children}</p>
-      <div className="mt-5"><Link href="/app" className="btn btn-primary">Start free</Link></div>
+      <div className="mt-5">
+        <Link href="/app" className="btn btn-primary">
+          Start free
+        </Link>
+      </div>
     </div>
   );
 }
 
-export function DocPage({ title, lede, wide, children }: { title: string; lede?: string; wide?: boolean; children: React.ReactNode }) {
+export function DocPage({
+  title,
+  lede,
+  wide,
+  children,
+}: {
+  title: string;
+  lede?: string;
+  wide?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <MarketingShell>
       <main className={`mx-auto px-6 pb-20 pt-10 ${wide ? "max-w-[1080px]" : "max-w-[38rem]"}`}>
@@ -68,7 +84,9 @@ export function Related({ links }: { links: { href: string; label: string }[] })
       {links.map((l, i) => (
         <span key={l.href}>
           {i > 0 ? " · " : null}
-          <Link href={l.href} className="text-ink underline" style={{ textUnderlineOffset: 2 }}>{l.label}</Link>
+          <Link href={l.href} className="text-ink underline" style={{ textUnderlineOffset: 2 }}>
+            {l.label}
+          </Link>
         </span>
       ))}
     </p>

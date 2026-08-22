@@ -43,7 +43,9 @@ function Col({ title, items }: { title: string; items: readonly (readonly [strin
       <ul className="mt-3 space-y-2">
         {items.map(([label, href]) => (
           <li key={href + label}>
-            <Link href={href} className="text-[14px] text-ink hover:underline" style={{ textUnderlineOffset: 2 }}>{label}</Link>
+            <Link href={href} className="text-[14px] text-ink hover:underline" style={{ textUnderlineOffset: 2 }}>
+              {label}
+            </Link>
           </li>
         ))}
       </ul>
