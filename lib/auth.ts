@@ -2,6 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { nid } from "./ids";
 import { mutateStore, readStore } from "./store";
+import { ensureAutoDemoMaya, isAutoDemoWorkspace, sampleStudents } from "./sample";
 import type { Session, Token, TokenKind, User } from "./types";
 
 const STAFF_COOKIE = "freeiep_session";
@@ -22,6 +23,7 @@ export async function createMagicToken(input: {
   email?: string;
   userId?: string;
   studentId?: string;
+  studentIds?: string[];
   meetingId?: string;
   slotId?: string;
   workspaceId?: string;
@@ -32,12 +34,13 @@ export async function createMagicToken(input: {
     email: input.email?.trim().toLowerCase(),
     userId: input.userId,
     studentId: input.studentId,
+    studentIds: input.studentIds,
     meetingId: input.meetingId,
     slotId: input.slotId,
     workspaceId: input.workspaceId,
     expiresAt: expiry(TOKEN_DAYS),
   };
-  mutateStore((s) => {
+  await mutateStore((s) => {
     s.tokens.push(token);
   });
   const path =
@@ -49,15 +52,15 @@ export async function createMagicToken(input: {
   return { token, url };
 }
 
-export function getToken(id: string): Token | null {
-  const t = readStore().tokens.find((x) => x.id === id);
+export async function getToken(id: string): Promise<Token | null> {
+  const t = (await readStore()).tokens.find((x) => x.id === id);
   if (!t) return null;
   if (new Date(t.expiresAt).getTime() < Date.now()) return null;
   return t;
 }
 
 export async function consumeToken(id: string): Promise<Token | null> {
-  return mutateStore((s) => {
+  return await mutateStore((s) => {
     const t = s.tokens.find((x) => x.id === id);
     if (!t) return null;
     if (new Date(t.expiresAt).getTime() < Date.now()) return null;
@@ -74,7 +77,7 @@ export async function setSession(userId: string, kind: "staff" | "family") {
     expiresAt: expiry(SESSION_DAYS),
     kind,
   };
-  mutateStore((s) => {
+  await mutateStore((s) => {
     s.sessions.push(session);
   });
   const jar = await cookies();
@@ -83,6 +86,7 @@ export async function setSession(userId: string, kind: "staff" | "family") {
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_DAYS * 86400,
+    secure: process.env.NETLIFY === "true" || process.env.NODE_ENV === "production",
   });
 }
 
@@ -92,9 +96,74 @@ export async function clearSession(kind: "staff" | "family" | "both" = "both") {
   if (kind === "family" || kind === "both") jar.delete(FAMILY_COOKIE);
 }
 
+const DEMO_EMAIL = "demo@freeiep.app";
+
+async function ensureDemoStaff(): Promise<User> {
+  const user = await mutateStore((s) => {
+    let user = s.users.find((u) => u.email === DEMO_EMAIL && u.role !== "family");
+    if (!user) {
+      user = {
+        id: nid("usr"),
+        email: DEMO_EMAIL,
+        name: "Demo teacher",
+        role: "owner",
+        workspaceId: nid("ws"),
+        createdAt: new Date().toISOString(),
+        acceptedLegalAt: new Date().toISOString(),
+      };
+      s.users.push(user);
+    }
+    if (!user.workspaceId) user.workspaceId = nid("ws");
+    if (!user.acceptedLegalAt) user.acceptedLegalAt = new Date().toISOString();
+    let ws = s.workspaces.find((w) => w.id === user!.workspaceId);
+    if (!ws) {
+      ws = {
+        id: user.workspaceId,
+        name: "Demo",
+        state: "OR",
+        ownerId: user.id,
+        createdAt: new Date().toISOString(),
+      };
+      s.workspaces.push(ws);
+    } else {
+      if (!ws.name) ws.name = "Demo";
+      if (!ws.state) ws.state = "OR";
+    }
+    if (user.workspaceId) {
+      if (isAutoDemoWorkspace(ws, user.email)) {
+        ensureAutoDemoMaya(s, user.workspaceId);
+      } else if (!s.students.some((st) => st.workspaceId === user.workspaceId)) {
+        s.students.push(...sampleStudents(user.workspaceId, user.email));
+      }
+    }
+    return { ...user };
+  });
+  return user;
+}
+
+
+async function maybeFixAutoDemoMaya(user: User) {
+  if (user.email !== DEMO_EMAIL || user.role !== "owner" || !user.workspaceId) return;
+  const store = await readStore();
+  const ws = store.workspaces.find((w) => w.id === user.workspaceId);
+  if (!isAutoDemoWorkspace(ws, user.email)) return;
+  const maya = store.students.find(
+    (st) => st.workspaceId === user.workspaceId && st.firstName === "Maya" && st.lastName === "Rivera",
+  );
+  const needs =
+    !maya ||
+    !maya.iepPlan.goals.length ||
+    !maya.activity.some((a) => a.object.includes("Goal 1")) ||
+    !maya.activity.some((a) => a.object.includes("Goal 2"));
+  if (!needs) return;
+  await mutateStore((s) => {
+    ensureAutoDemoMaya(s, user.workspaceId!);
+  });
+}
+
 export async function currentUser(kind: "staff" | "family" | "any" = "any"): Promise<User | null> {
   const jar = await cookies();
-  const store = readStore();
+  const store = await readStore();
   const ids: string[] = [];
   if (kind === "staff" || kind === "any") {
     const v = jar.get(STAFF_COOKIE)?.value;
@@ -110,14 +179,18 @@ export async function currentUser(kind: "staff" | "family" | "any" = "any"): Pro
     if (new Date(ses.expiresAt).getTime() < Date.now()) continue;
     if (kind !== "any" && ses.kind !== kind) continue;
     const user = store.users.find((u) => u.id === ses.userId);
-    if (user) return user;
+    if (user) {
+      await maybeFixAutoDemoMaya(user);
+      return user;
+    }
   }
-  return null;
+  if (kind === "family") return null;
+  return ensureDemoStaff();
 }
 
-export function upsertUser(email: string, patch: Partial<User> = {}): User {
+export async function upsertUser(email: string, patch: Partial<User> = {}): Promise<User> {
   const normalized = email.trim().toLowerCase();
-  return mutateStore((s) => {
+  return await mutateStore((s) => {
     let user = s.users.find((u) => u.email === normalized);
     if (!user) {
       user = {
@@ -131,12 +204,19 @@ export function upsertUser(email: string, patch: Partial<User> = {}): User {
       user.email = normalized;
       s.users.push(user);
     } else {
+      const incomingIds = patch.assignedStudentIds;
+      const nextRole = patch.role;
+      const keepOwner = user.role === "owner" && nextRole === "member";
       Object.assign(user, patch, { email: normalized });
+      if (keepOwner) user.role = "owner";
+      if (incomingIds) {
+        user.assignedStudentIds = [...new Set([...(user.assignedStudentIds ?? []), ...incomingIds])];
+      }
     }
     return { ...user };
   });
 }
 
-export function findUser(id: string): User | undefined {
-  return readStore().users.find((u) => u.id === id);
+export async function findUser(id: string): Promise<User | undefined> {
+  return (await readStore()).users.find((u) => u.id === id);
 }
