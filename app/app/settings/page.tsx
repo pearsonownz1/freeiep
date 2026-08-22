@@ -89,7 +89,17 @@ export default async function SettingsPage({
       ) : null}
 
       <h2 className="mt-12 font-sans text-[16px] font-semibold">Your data</h2>
-      <p className="mt-1 text-[15px] text-ink-soft">Export the workspace JSON. Delete students from each student page.</p>
+      <p className="mt-1 text-[15px] text-ink-soft">
+        Workspace JSON is here. Per-student JSON, plan PDF, and progress PDF are on{" "}
+        <Link href="/app/export" className="link">
+          Export
+        </Link>
+        . Staff FERPA notes:{" "}
+        <Link href="/app/privacy" className="link">
+          Privacy
+        </Link>
+        . Delete students from each student page.
+      </p>
       <ExportButton />
     </div>
   );
