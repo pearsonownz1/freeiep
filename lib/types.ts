@@ -22,6 +22,7 @@ export type MeetingStatus = "drafted" | "finding_time" | "confirmed" | "done";
 export type TokenKind =
   | "login"
   | "family_invite"
+  | "member_invite"
   | "meeting_accept"
   | "meeting_suggest"
   | "meeting_decline";
@@ -33,6 +34,7 @@ export type User = {
   role: Role;
   workspaceId: string | null;
   studentId?: string;
+  assignedStudentIds?: string[];
   assistKey?: string;
   createdAt: string;
   acceptedLegalAt?: string;
@@ -52,6 +54,7 @@ export type Token = {
   email?: string;
   userId?: string;
   studentId?: string;
+  studentIds?: string[];
   meetingId?: string;
   slotId?: string;
   workspaceId?: string;
@@ -65,6 +68,7 @@ export type Workspace = {
   state: string;
   ownerId: string;
   createdAt: string;
+  removedMemberEmails?: string[];
 };
 
 export type PresentLevels = {
@@ -212,6 +216,7 @@ export type Student = {
   activity: Activity[];
   progressReports: ProgressReport[];
   createdAt: string;
+  revokedFamilyEmails?: string[];
 };
 
 export type StoreData = {
