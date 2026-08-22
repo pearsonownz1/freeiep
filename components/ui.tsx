@@ -1,14 +1,11 @@
 import Link from "next/link";
 
 export function Wordmark({ href = "/", size = "md" }: { href?: string; size?: "sm" | "md" }) {
-  const cls = size === "sm" ? "text-[15px]" : "text-[18px]";
+  const cls = size === "sm" ? "text-[13px]" : "text-[16px]";
   return (
-    <Link href={href} className={`inline-flex items-center gap-2 tracking-[-0.02em] ${cls}`} style={{ letterSpacing: "-0.02em" }}>
+    <Link href={href} className={`inline-flex items-center gap-2 ${cls}`}>
       <img src="/mark.svg" alt="" width={size === "sm" ? 24 : 28} height={size === "sm" ? 24 : 28} />
-      <span>
-        <span className="font-normal">Free</span>
-        <span className="font-semibold">IEP</span>
-      </span>
+      <span className="tracking-[-0.02em] text-ink"><span className="font-normal">Free</span><span className="font-semibold">IEP</span></span>
     </Link>
   );
 }

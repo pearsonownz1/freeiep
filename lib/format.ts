@@ -1,4 +1,4 @@
-import type { Goal, Metric } from "./types";
+import type { Activity, Goal, Metric } from "./types";
 import { METRIC_LABELS } from "./types";
 
 export function studentName(s: { firstName: string; lastName: string }): string {
@@ -76,3 +76,8 @@ export const METRICS: Metric[] = [
   "count",
   "custom",
 ];
+
+export function activityCopy(a: Activity): string {
+  const who = a.who.includes("@") ? a.who.split("@")[0] : a.who;
+  return `${who} ${a.verb} ${a.object}`.replace(/\s+/g, " ").trim();
+}
