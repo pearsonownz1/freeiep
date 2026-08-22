@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { staffCanSeeStudent } from "@/lib/access";
 import { currentUser } from "@/lib/auth";
 import { lastnameFilename } from "@/lib/format";
 import { buildProgressPdf } from "@/lib/pdf";
@@ -12,8 +13,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ reportI
   if (!student || !report) return new NextResponse("Not found", { status: 404 });
   const staff = await currentUser("staff");
   const family = await currentUser("family");
-  const staffOk = staff && staff.role !== "family" && staff.workspaceId === student.workspaceId;
-  const familyOk = family && family.studentId === student.id && report.publishedToFamily;
+  const staffOk = staff && staff.role !== "family" && staffCanSeeStudent(staff, student);
+  const familyOk = family && family.studentId === student.id && report.publishedToFamily && !(student.revokedFamilyEmails ?? []).includes(family.email);
   if (!staffOk && !familyOk) return new NextResponse("Forbidden", { status: 403 });
   const bytes = await buildProgressPdf(student, report);
   const name = lastnameFilename(student.lastName, "progress", report.createdAt.slice(0, 10));

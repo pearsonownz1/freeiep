@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { staffCanSeeStudent } from "@/lib/access";
 import { currentUser } from "@/lib/auth";
 import { readStore, readUpload } from "@/lib/store";
 
@@ -11,13 +12,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const staff = await currentUser("staff");
   const family = await currentUser("family");
-  const staffOk = staff && staff.role !== "family" && staff.workspaceId === student.workspaceId;
-  const familyOk = family && family.studentId === student.id && doc.publishedToFamily;
+  const staffOk = staff && staff.role !== "family" && staffCanSeeStudent(staff, student);
+  const familyOk = family && family.studentId === student.id && doc.publishedToFamily && !(student.revokedFamilyEmails ?? []).includes(family.email);
   if (!staffOk && !familyOk) return new NextResponse("Forbidden", { status: 403 });
 
   const buf = await readUpload(doc.storedName);
   if (!buf) return new NextResponse("Missing file", { status: 404 });
-  return new NextResponse(buf, {
+  return new NextResponse(new Uint8Array(buf), {
     headers: {
       "Content-Type": doc.mime,
       "Content-Disposition": `inline; filename="${doc.filename}"`,
