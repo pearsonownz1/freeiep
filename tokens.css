@@ -1,43 +1,43 @@
-/* FreeIEP design tokens — single source of visual truth */
+/* FreeIEP design tokens — FortisEval-quiet light */
 :root {
-  --paper: #f7f4ee;
-  --paper-raised: #fffcf7;
-  --ink: #1c1917;
-  --ink-soft: #57534e;
-  --line: #e8e4dc;
-  --meadow: #2f6b4f;
-  --meadow-deep: #1f4a37;
-  --meadow-soft: #e3ede7;
-  --clay: #c45c26;
-  --clay-soft: #f8ebe3;
-  --sun: #c98806;
-  --sun-soft: #f8efc9;
-  --berry: #a33b2b;
-  --berry-soft: #f6e4e1;
-  --focus: #2f6b4f;
+  --paper: #F8F8F8;
+  --paper-raised: #FFFFFF;
+  --ink: #1E2939;
+  --ink-soft: #6A7282;
+  --line: #E8E8E8;
+  --meadow: #059669;
+  --meadow-deep: #047857;
+  --meadow-soft: #ECFDF5;
+  --clay: #C96B4A;
+  --clay-soft: #FFF3EC;
+  --sun: #D97706;
+  --sun-soft: #FFF7ED;
+  --berry: #C2413B;
+  --berry-soft: #FDECEC;
+  --focus: #1E2939;
 
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Source Serif 4", "Iowan Old Style", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Source Serif 4", "Source Serif Pro", ui-serif, Georgia, serif;
 
-  --text-display: 2.5rem;
-  --text-page: 1.75rem;
-  --text-section: 1rem;
-  --text-body: 0.9375rem;
-  --text-ui: 0.8125rem;
+  --text-display: 3rem;
+  --text-page: 2.25rem;
+  --text-section: 1.125rem;
+  --text-body: 1rem;
+  --text-ui: 0.875rem;
   --text-meta: 0.75rem;
 
-  --radius-card: 12px;
-  --radius-control: 8px;
+  --radius-card: 16px;
+  --radius-control: 12px;
+  --radius-mark: 12px;
   --radius-pill: 999px;
-  --radius-mark: 8px;
 
-  --shadow-card: 0 1px 2px rgb(28 25 23 / 0.06);
+  --shadow-card: 0 8px 24px rgb(30 41 57 / 0.06);
   --focus-ring: 0 0 0 2px var(--paper), 0 0 0 4px var(--focus);
 
   --space-page: 24px;
   --nav-width: 220px;
   --row-height: 56px;
-  --control-height: 40px;
+  --control-height: 44px;
   --app-max: 1080px;
   --prose-max: 38rem;
 
@@ -54,13 +54,16 @@ html, body {
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: var(--text-body);
-  line-height: 1.5;
+  line-height: 1.6;
+  color-scheme: light;
 }
 
 h1, h2, .page-title {
   font-family: var(--font-serif);
-  font-weight: 600;
+  font-weight: 550;
   color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
 .tabular { font-variant-numeric: tabular-nums; }

@@ -8,6 +8,7 @@
     "start": "next start --port 3002"
   },
   "dependencies": {
+    "@netlify/blobs": "^11.0.1",
     "next": "^16.0.7",
     "pdf-lib": "^1.17.1",
     "react": "^19.2.0",
@@ -15,6 +16,7 @@
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@netlify/plugin-nextjs": "^5.15.13",
     "@tailwindcss/postcss": "^4.1.12",
     "@types/node": "^20.19.11",
     "@types/react": "^19.1.12",
